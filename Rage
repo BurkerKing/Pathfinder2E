@@ -1,0 +1,47 @@
+const ITEM_UUID = 'Compendium.pf2e.feature-effects.z3uyCMBddrPK5umr'; // Effect: Rage
+
+const tableRage = game.tables.entities.find(t => t.name === "RageSayings");
+let messageRageSaying = tableRage.roll().results[0].text;
+
+let messageContent = '';
+
+(async () => {
+    const effect = duplicate(await fromUuid(ITEM_UUID));
+    effect.flags.core = effect.flags.core ?? {};
+    effect.flags.core.sourceId = effect.flags.core.sourceId ?? ITEM_UUID;
+    
+    for await (const token of canvas.tokens.controlled) {
+        let existing = token.actor.items.find(i => i.type === 'effect' && i.data.flags.core?.sourceId === ITEM_UUID);
+
+        if (existing) {
+
+            token.actor.deleteOwnedItem(existing._id);
+            messageContent = 'Is no longer Raging';
+
+            let message = await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ token: token }), content: "I have returned to humanity!" }, { chatBubble: true });
+            await message.delete();
+
+        } else {
+
+            token.actor.createOwnedItem(effect);
+            messageContent = 'Enters a Rage!';
+
+            let message = await ChatMessage.create({ speaker: ChatMessage.getSpeaker({ token: token }), content: messageRageSaying }, { chatBubble: true });
+            await message.delete();
+        }
+
+        // create the message
+        if (messageContent !== '') {
+            let chatData = {
+                user: game.user._id,
+                speaker: ChatMessage.getSpeaker(),
+                content: messageContent,
+            };
+            
+            ChatMessage.create(chatData, {});
+        }
+    
+        if (token) MacroMarker.toggle(this, { entity: token });
+    
+    }
+})();
